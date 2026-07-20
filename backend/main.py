@@ -36,6 +36,37 @@ def register(user: User):
     return {
         "message": "User registered successfully!"
     }
+
 @app.get("/users")
 def get_users():
-    return users
+    return [
+        {
+            "name": user.name,
+            "email": user.email
+        }
+        for user in users
+    ]
+
+@app.get("/users")
+def get_users():
+    return [
+        {
+            "name": user.name,
+            "email": user.email
+        }
+        for user in users
+    ]
+
+@app.get("/find-user/{email}")
+def find_user(email: str):
+
+    for user in users:
+        if user.email == email:
+            return{
+                "name": user.name,
+                "email": user.email
+            }
+
+    return {
+        "message": "User not found"
+    }

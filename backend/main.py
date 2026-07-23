@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from database.database import get_db
 from models.user import User as UserModel
+from utils.security import hash_password, verify_password
 
 app = FastAPI(
     title="Nexus API",
@@ -17,6 +18,9 @@ class User(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8)
 
+class Login(BaseModel):
+    email: EmailStr
+    password: str
 
 @app.get("/")
 def home():
@@ -53,11 +57,14 @@ def register(user: User, db: Session = Depends(get_db)):
             status_code=409,
             detail="Email already registered"
         )
+    print("Password:", user.password)
+    print("Type:", type(user.password))
+    print("Length:", len(user.password))
 
     new_user = UserModel(
         name=user.name,
         email=user.email,
-        password=user.password
+        password=hash_password(user.password)
     )
 
     db.add(new_user)
@@ -67,6 +74,31 @@ def register(user: User, db: Session = Depends(get_db)):
     return {
         "message": "User registered successfully!",
         "id": new_user.id
+    }
+
+@app.post("/login")
+def login(login_data: Login, db: Session = Depends(get_db)):
+
+    user = (
+        db.query(UserModel)
+        .filter(UserModel.email == login_data.email)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    if not verify_password(login_data.password, user.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect password"
+        )
+
+    return {
+        "message": "Login successful"
     }
 
 

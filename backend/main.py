@@ -1,4 +1,7 @@
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import (
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
@@ -20,7 +23,8 @@ oauth2_scheme = OAuth2PasswordBearer(
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme)
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
 ):
 
     payload = verify_access_token(token)
@@ -31,7 +35,19 @@ def get_current_user(
             detail="Invalid or expired token"
         )
 
-    return payload
+    user = (
+        db.query(UserModel)
+        .filter(UserModel.id == payload["user_id"])
+        .first()
+    )
+
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return user
 
 
 class User(BaseModel):
@@ -98,11 +114,14 @@ def register(user: User, db: Session = Depends(get_db)):
 
 
 @app.post("/login")
-def login(login_data: Login, db: Session = Depends(get_db)):
+def login(
+    from_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
 
     user = (
         db.query(UserModel)
-        .filter(UserModel.email == login_data.email)
+        .filter(UserModel.email == from_data.username)
         .first()
     )
 
@@ -112,7 +131,7 @@ def login(login_data: Login, db: Session = Depends(get_db)):
             detail="User not found"
         )
 
-    if not verify_password(login_data.password, user.password):
+    if not verify_password(from_data.password, user.password):
         raise HTTPException(
             status_code=401,
             detail="Incorrect password"
@@ -173,3 +192,14 @@ def find_user(
         status_code=404,
         detail="User not found"
     )
+
+@app.get("/me")
+def get_me(
+    current_user: UserModel = Depends(get_current_user)
+):
+
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email
+    }

@@ -1,4 +1,11 @@
-SECRET_KEY = "change_this_to_a_long_random_secret_key"
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()
+
+
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 ALGORITHM = "HS256"
 

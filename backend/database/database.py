@@ -27,5 +27,6 @@ def get_db():
         db.close()
 
 from models.user import Base
+from models.knowledge import Knowledge
 
 Base.metadata.create_all(bind=engine)

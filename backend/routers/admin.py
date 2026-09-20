@@ -64,3 +64,33 @@ def change_user_role(
         "email": user.email,
         "role": user.role
     }
+
+@router.delete("/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_user: UserModel = Depends(require_admin),
+    db: Session = Depends(get_db)
+):
+    user = (
+        db.query(UserModel)
+        .filter(UserModel.id == user_id)
+        .first()
+    )
+    if user is None:
+        raise HTTPException(
+            status_code=404,
+            detail="User ain't found"
+        )
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Admin can't delete their own account"
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return {
+        "message": "User deleted successfully",
+        "id": user_id
+    }
